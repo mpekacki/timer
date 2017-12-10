@@ -1,0 +1,10 @@
+.task.selected, .entry.selected {
+    border: 2px black solid;
+}
+.task {
+    margin: 5px;
+}
+
+.day {
+    margin: 5px;
+}
