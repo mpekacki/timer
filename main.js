@@ -19,6 +19,7 @@ weekday[3] = "Wednesday";
 weekday[4] = "Thursday";
 weekday[5] = "Friday";
 weekday[6] = "Saturday";
+var audio = new Audio('sound.mp3');
 
 function init() {
     getPermission();
@@ -109,6 +110,7 @@ function timerEnd() {
     clearInterval(timerInterval);
     if (notificationPermission) {
         new Notification('Time\'s up!');
+        audio.play();
     }
     if (typeof timerCallback === "function") {
         timerCallback();
@@ -209,7 +211,7 @@ function renderCalendar(weekStart) {
                 calendarCell.css('background-color', entry["task"].color);
                 calendarCell.attr('title', entry["task"].name);
                 calendarCell.html(entry["time"]);
-                calendarCell.append($('<span class="text-muted ml-2">' + entry["task"].name + '</span>'));
+                calendarCell.append($('<span class="ml-2">' + entry["task"].name + '</span>'));
             }
             calendarRow.append(calendarCell);
         }
