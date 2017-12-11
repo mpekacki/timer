@@ -11,6 +11,7 @@ var emptyTask = {name : '', color: '#FFFFFF'};
 var currentTask = emptyTask;
 var calendar;
 var currentDay;
+var weekOffset = 0;
 var weekday = new Array(7);
 weekday[0] =  "Sunday";
 weekday[1] = "Monday";
@@ -148,17 +149,32 @@ function cbWork() {
     }
     calendar[currentDay].entries.push({"task" : currentTask, "time" : formatTime(hour, minute)});
     saveCalendar();
+    weekOffset = 0;
     refreshCalendar();
 }
 
 function getStartOfWeek(date) {
-    var start = new Date();
-    start.setDate(date.getDate() - date.getDay());
-    return start
+    return moment(date).startOf('week').toDate();
+}
+
+function calendarLeft() {
+    weekOffset--;
+    refreshCalendar();
+}
+
+function calendarRight() {
+    weekOffset++;
+    refreshCalendar();
 }
 
 function refreshCalendar() {
-    renderCalendar(getStartOfWeek(new Date()));
+    var d = new Date();
+    if (weekOffset > 0) {
+        d = moment(d).add(weekOffset, 'weeks').toDate();
+    } else if (weekOffset < 0) {
+        d = moment(d).subtract(-weekOffset, 'weeks').toDate();
+    }
+    renderCalendar(getStartOfWeek(d));
 }
 
 function renderCalendar(weekStart) {
@@ -169,15 +185,17 @@ function renderCalendar(weekStart) {
         var minutes = (s % 3600) / 60;
         leftColumn.push(formatTime(hours, minutes));
     }
-    var startDate = weekStart.getDate();
+    var currentDayIndex;
     var grid = new Array(leftColumn.length + 2); // day names and dates
     for (var i = 0; i < grid.length; i++) {
         grid[i] = new Array(7);
     }
     for (var d = 0; d < 7; d++) {
-        var day = new Date();
-        day.setDate(startDate + d);
+        var day = moment(weekStart).add(d, 'days').toDate();
         var dateStr = day.getFullYear() + '-' + (day.getMonth() + 1) + '-' + day.getDate();
+        if (dateStr === currentDay) {
+            currentDayIndex = d;
+        }
         grid[0][d] = weekday[day.getDay()];
         grid[1][d] = dateStr;
         if (calendar[dateStr]) {
@@ -191,14 +209,18 @@ function renderCalendar(weekStart) {
         }
     }
     var calendarTable = $('<table class="table table-sm"></table>');
-    var calendarHead = $('<tr><th></th></tr>');
+    var calendarHead = $('<tr><th><button class="btn" onclick="calendarLeft();"><</button></th></tr>');
     for (var d = 0; d < 7; d++) {
         var dayHead = $('<th></th>');
+        if (currentDayIndex === d) {
+            dayHead.addClass('bg-light');
+        }
         var dayName = grid[0][d];
         var date = grid[1][d];
         dayHead.append(dayName + '<br/>' + date);
         calendarHead.append(dayHead);
     }
+    calendarHead.append($('<th><button class="btn" onclick="calendarRight();">></button></th>'));
     calendarTable.append($('<thead></thead>').append(calendarHead));
     var calendarBody = $('<tbody></tbody>');
     for (var row = 2; row < grid.length; row++) {
@@ -207,8 +229,11 @@ function renderCalendar(weekStart) {
         for (var d = 0; d < 7; d++) {
             var entry = grid[row][d];
             var calendarCell = $('<td></td>');
+            if (currentDayIndex === d) {
+                calendarCell.addClass('bg-light');
+            }
             if (entry !== undefined) {
-                calendarCell.css('background-color', entry["task"].color);
+                calendarCell.attr('style', 'background-color:' + entry["task"].color + '!important');
                 calendarCell.attr('title', entry["task"].name);
                 calendarCell.html(entry["time"]);
                 calendarCell.append($('<span class="ml-2">' + entry["task"].name + '</span>'));
