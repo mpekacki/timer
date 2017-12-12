@@ -1,0 +1,17 @@
+{
+  "name": "timer-timer",
+  "version": "0.0.0",
+  "description": "A timer",
+  "main": "main_electron.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": "https://github.com/mpekacki/timer",
+  "keywords": [
+    "timer"
+  ],
+  "author": "mpekacki",
+  "devDependencies": {
+    "electron": "~1.7.8"
+  }
+}
