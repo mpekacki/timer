@@ -7,7 +7,7 @@ var timerCallback = null;
 var paused = false;
 var notificationPermission;
 var tasks;
-var emptyTask = {name : '', color: '#FFFFFF'};
+var emptyTask = {name : '', description: 'No task', color: '#FFFFFF'};
 var currentTask = emptyTask;
 var calendar;
 var currentDay;
@@ -30,7 +30,7 @@ function init() {
     refreshCalendar();
     $(document).ready(function(){
         $('body').on('click', 'a.create-new', function(e) {
-            setCurrentTask(createTask($(e.target).attr('data-name')));
+            setCurrentTask(createTask($(e.target).attr('data-name'), $('#new-task-description').val()));
             $('#task-input').val('');
             taskInput();
         });
@@ -140,7 +140,7 @@ function startTimer(seconds, callback) {
 
 function cbWork() {
     if (currentTask == emptyTask && $('#task-input').val().length) {
-        setCurrentTask(createTask($('#task-input').val()));
+        setCurrentTask(createTask($('#task-input').val(), $('#new-task-description').val()));
     }
     var hour = new Date().getHours();
     var minute = new Date().getMinutes();
@@ -234,7 +234,7 @@ function renderCalendar(weekStart) {
             }
             if (entry !== undefined) {
                 calendarCell.attr('style', 'background-color:' + entry["task"].color + '!important');
-                calendarCell.attr('title', entry["task"].name);
+                calendarCell.attr('title', entry["task"].description);
                 calendarCell.html(entry["time"]);
                 calendarCell.append($('<span class="ml-2">' + entry["task"].name + '</span>'));
             }
@@ -251,19 +251,34 @@ function taskInput() {
     var text = $('#task-input').val();
     var matchingTasks = getMatchingTasks(text);
     if (matchingTasks.perfectMatch === null) {
-        if (text.length)
+        if (text.length) {
             $('#matching-tasks').append($('<a class="create-new btn" data-name="' + text + '">Create new task "' + text + '"</a>'));
+            createTaskDescriptionInput();
+        } else {
+            destroyTaskDescriptionInput();
+        }
     } else {
-        $('#matching-tasks').append($('<a class="task btn" data-name="' + matchingTasks.perfectMatch.name + '" style="background-color: ' + matchingTasks.perfectMatch.color + '">' + matchingTasks.perfectMatch.name + '</a>'));
+        $('#matching-tasks').append($('<a class="task btn" data-name="' + matchingTasks.perfectMatch.name + '" title="' + matchingTasks.perfectMatch.description + '" style="background-color: ' + matchingTasks.perfectMatch.color + '">' + matchingTasks.perfectMatch.name + '</a>'));
+        destroyTaskDescriptionInput();
     }
     for (var i = 0; i < matchingTasks.matches.length; i++) {
         var taskText = matchingTasks.matches[i].name;
         if (taskText === '') {
             taskText = 'No task';
         }
-        $('#matching-tasks').append($('<a class="task btn" data-name="' + matchingTasks.matches[i].name + '" style="background-color: ' + matchingTasks.matches[i].color + '">' + taskText + '</a>'));
+        $('#matching-tasks').append($('<a class="task btn" data-name="' + matchingTasks.matches[i].name + '" title="' + matchingTasks.matches[i].description + '" style="background-color: ' + matchingTasks.matches[i].color + '">' + taskText + '</a>'));
     }
     $("a.task[data-name='" + currentTask.name + "']").addClass('selected');
+}
+
+function createTaskDescriptionInput() {
+    if ($('#new-task-description').length) return;
+    var descriptionInput = $('<input type-"text" class="form-control mt-3 mb-3" id="new-task-description" placeholder="New task description (optional)"></input>');
+    $('#calendar').before(descriptionInput);
+}
+
+function destroyTaskDescriptionInput() {
+    $('#new-task-description').remove();
 }
 
 function getMatchingTasks(text) {
@@ -284,8 +299,8 @@ function getMatchingTasks(text) {
     return result;
 }
 
-function createTask(name) {
-    var newTask = {name: name, color: getRandomColor()};
+function createTask(name, description) {
+    var newTask = {name: name, description: description, color: getRandomColor()};
     tasks.push(newTask);
     saveTasks();
     return newTask;
