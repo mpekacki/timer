@@ -8,3 +8,7 @@
 .day {
     margin: 5px;
 }
+
+#calendar tbody > tr:nth-child(4n+1) {
+    border-top: 2px lightgray solid;
+}

@@ -2,6 +2,7 @@
 var workLength = 1500;
 var shortBreakLength = 300;
 var longBreakLength = 600;
+var workDayLength = 28800;
 var timerInterval;
 var timerCallback = null;
 var paused = false;
@@ -179,14 +180,8 @@ function refreshCalendar() {
 
 function renderCalendar(weekStart) {
     $('#calendar').html('');
-    var leftColumn = [];
-    for (var s = (workLength + shortBreakLength); s <= 28800; s += (workLength + shortBreakLength)) {
-        var hours = Math.floor(s / 3600);
-        var minutes = (s % 3600) / 60;
-        leftColumn.push(formatTime(hours, minutes));
-    }
     var currentDayIndex;
-    var grid = new Array(leftColumn.length + 2); // day names and dates
+    var grid = new Array(2 + workDayLength / (workLength + shortBreakLength)); // day names and dates
     for (var i = 0; i < grid.length; i++) {
         grid[i] = new Array(7);
     }
@@ -208,6 +203,16 @@ function renderCalendar(weekStart) {
             }
         }
     }
+    var leftColumn = [];
+    var workdayEndsAtIndex = -1;
+    for (var s = (workLength + shortBreakLength); s <= Math.max(workDayLength, (workLength + shortBreakLength) * grid.length - 2); s += (workLength + shortBreakLength)) {
+        var hours = Math.floor(s / 3600);
+        var minutes = (s % 3600) / 60;
+        leftColumn.push(formatTime(hours, minutes));
+        if (s <= workDayLength) {
+            workdayEndsAtIndex++;
+        }
+    }
     var calendarTable = $('<table class="table table-sm"></table>');
     var calendarHead = $('<tr><th><button class="btn" onclick="calendarLeft();"><</button></th></tr>');
     for (var d = 0; d < 7; d++) {
@@ -225,7 +230,11 @@ function renderCalendar(weekStart) {
     var calendarBody = $('<tbody></tbody>');
     for (var row = 2; row < grid.length; row++) {
         var calendarRow = $('<tr></tr>');
-        calendarRow.append($('<td>' + leftColumn[row - 2] + '</td>'));
+        var leftCell = $('<td>' + leftColumn[row - 2] + '</td>');
+        if (row - 2 > workdayEndsAtIndex) {
+            leftCell.addClass('text-muted');
+        }
+        calendarRow.append(leftCell);
         for (var d = 0; d < 7; d++) {
             var entry = grid[row][d];
             var calendarCell = $('<td></td>');
@@ -320,7 +329,6 @@ function saveCalendar() {
 
 function getRandomColor() {
     var golden = 0.618033988749895;
-    var letters = '0123456789ABCDEF';
     var h = Math.random();
     h += golden;
     h %= 1;
