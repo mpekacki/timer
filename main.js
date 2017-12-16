@@ -155,7 +155,7 @@ function cbWork() {
 }
 
 function getStartOfWeek(date) {
-    return moment(date).startOf('week').toDate();
+    return moment(date).startOf('isoweek').toDate();
 }
 
 function calendarLeft() {
