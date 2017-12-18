@@ -1,11 +1,14 @@
 "use strict"
 
-var settings = {
+var defaultSettings = {
     workLength : 1500,
     shortBreakLength : 300,
     longBreakLength : 600,
-    workDayLength : 28800
+    workDayLength : 28800,
+    includeShortBreakInChunks: true,
+    includeLongBreakInChunks: false
 };
+var settings = getClonedDefaultSettings();
 var timerInterval;
 var timerCallback = null;
 var paused = true;
@@ -64,17 +67,45 @@ function loadSettings() {
     setSettingsInputs();
 }
 
+function saveSettings() {
+    var newSettings = getClonedDefaultSettings();
+    var workLengthInput = +$('#workLength').val();
+    if (Number.isInteger(workLengthInput)) {
+        newSettings.workLength = workLengthInput * 60;
+    }
+    var shortBreakLengthInput = +$('#shortBreakLength').val();
+    if (Number.isInteger(shortBreakLengthInput)) {
+        newSettings.shortBreakLength = shortBreakLengthInput * 60;
+    }
+    var longBreakLengthInput = +$('#longBreakLength').val();
+    if (Number.isInteger(longBreakLengthInput)) {
+        newSettings.longBreakLength = longBreakLengthInput * 60;
+    }
+    var workDayLengthInput = +$('#workDayLength').val();
+    if (Number.isInteger(workDayLengthInput)) {
+        newSettings.workDayLength = workDayLengthInput * 60;
+    }
+    newSettings.includeShortBreakInChunks = $('#includeShortBreak').is(':checked');
+    newSettings.includeLongBreakInChunks = $('#includeLongBreak').is(':checked');
+    settings = newSettings;
+    localStorage.setItem("settings", JSON.stringify(settings));
+    if (timerRunning) {
+        clearInterval(timerInterval);
+        timerRunning = false;
+        paused = true;
+        setPlayPauseIcon();
+    }
+    refreshCalendar();
+    setTimerValue(settings.workLength);
+    $('#toggleSettings').click();
+}
+
 function settingsClicked() {
     setSettingsInputs();
 }
 
 function resetSettings() {
-    settings = {
-        workLength : 1500,
-        shortBreakLength : 300,
-        longBreakLength : 600,
-        workDayLength : 28800
-    };
+    settings = getClonedDefaultSettings();
     setSettingsInputs();
     saveSettings();
 }
@@ -83,7 +114,13 @@ function setSettingsInputs() {
     $('#workLength').val(settings.workLength / 60);
     $('#shortBreakLength').val(settings.shortBreakLength / 60);
     $('#longBreakLength').val(settings.longBreakLength / 60);
-    $('#workDayLength').val(settings.workDayLength / 60 / 60);
+    $('#workDayLength').val(settings.workDayLength / 60);
+    $('#includeShortBreak').prop('checked', settings.includeShortBreakInChunks);
+    $('#includeLongBreak').prop('checked', settings.includeLongBreakInChunks);
+}
+
+function getClonedDefaultSettings() {
+    return JSON.parse(JSON.stringify(defaultSettings));
 }
 
 function initCalendar() {
@@ -231,7 +268,11 @@ function refreshCalendar() {
 function renderCalendar(weekStart) {
     $('#calendar').html('');
     var currentDayIndex;
-    var grid = new Array(2 + settings.workDayLength / (settings.workLength + settings.shortBreakLength)); // day names and dates
+    var normalChunkLength = settings.workLength;
+    if (settings.includeShortBreakInChunks) {
+        normalChunkLength += settings.shortBreakLength;
+    }
+    var grid = new Array(2 + Math.ceil(settings.workDayLength / normalChunkLength)); // 2 for day names and dates
     for (var i = 0; i < grid.length; i++) {
         grid[i] = new Array(7);
     }
@@ -255,7 +296,15 @@ function renderCalendar(weekStart) {
     }
     var leftColumn = [];
     var workdayEndsAtIndex = -1;
-    for (var s = (settings.workLength + settings.shortBreakLength); s <= Math.max(settings.workDayLength, (settings.workLength + settings.shortBreakLength) * grid.length - 2); s += (settings.workLength + settings.shortBreakLength)) {
+    var longBreakCounter = 0;
+    for (var s = normalChunkLength; s <= Math.max(settings.workDayLength, normalChunkLength * grid.length - 2); s += normalChunkLength) {
+        if (settings.includeLongBreakInChunks) {
+            longBreakCounter++;
+            if (longBreakCounter === 4) {
+                longBreakCounter = 0;
+                s += settings.longBreakLength - settings.shortBreakLength;
+            }
+        }
         var hours = Math.floor(s / 3600);
         var minutes = (s % 3600) / 60;
         leftColumn.push(formatTime(hours, minutes));
@@ -419,40 +468,4 @@ function HSVtoRGB(h, s, v) {
 
 function formatTime(left, right) {
     return (left < 10 ? '0' : '') + left + ':' + (right < 10 ? '0' : '') + right;
-}
-
-function saveSettings() {
-    var newSettings = {
-        workLength : 1500,
-        shortBreakLength : 300,
-        longBreakLength : 600,
-        workDayLength : 28800
-    };
-    var workLengthInput = +$('#workLength').val();
-    if (Number.isInteger(workLengthInput)) {
-        newSettings.workLength = workLengthInput * 60;
-    }
-    var shortBreakLengthInput = +$('#shortBreakLength').val();
-    if (Number.isInteger(shortBreakLengthInput)) {
-        newSettings.shortBreakLength = shortBreakLengthInput * 60;
-    }
-    var longBreakLengthInput = +$('#longBreakLength').val();
-    if (Number.isInteger(longBreakLengthInput)) {
-        newSettings.longBreakLength = longBreakLengthInput * 60;
-    }
-    var workDayLengthInput = +$('#workDayLength').val();
-    if (Number.isInteger(workDayLengthInput)) {
-        newSettings.workDayLength = workDayLengthInput * 60 * 60;
-    }
-    settings = newSettings;
-    localStorage.setItem("settings", JSON.stringify(settings));
-    if (timerRunning) {
-        clearInterval(timerInterval);
-        timerRunning = false;
-        paused = true;
-        setPlayPauseIcon();
-    }
-    refreshCalendar();
-    setTimerValue(settings.workLength);
-    $('#toggleSettings').click();
 }
