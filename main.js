@@ -195,6 +195,8 @@ function setPlayPauseIcon() {
 function timerEnd() {
     clearInterval(timerInterval);
     timerRunning = false;
+    paused = true;
+    setPlayPauseIcon();
     if (notificationPermission) {
         new Notification('Time\'s up!');
         audio.play();
