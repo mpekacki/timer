@@ -1,9 +1,15 @@
+.task.shadow-selected {
+    border: 2px black dashed !important;
+}
+
 .task.selected, .entry.selected {
     border: 2px black solid !important;
 }
+
+
 .task {
     margin: 5px;
-    border: 2px white solid !important;
+    border: 2px transparent solid !important;
 }
 
 .day {
@@ -12,4 +18,8 @@
 
 #calendar tbody > tr:nth-child(4n+1) {
     border-top: 2px lightgray solid;
+}
+
+.edit-mode {
+    background: repeating-linear-gradient(-45deg, #ffc107, #ffc107 , white 10px, white 10px);
 }

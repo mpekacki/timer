@@ -13,6 +13,12 @@ var timerInterval;
 var timerCallback = null;
 var paused = true;
 var timerRunning = false;
+var entryEditMode = false;
+var editedEntry = {
+    date: null,
+    index: null,
+    taskName: null
+};
 var notificationPermission;
 var tasks;
 var emptyTask = {name : '', description: 'No task', color: '#FFFFFF'};
@@ -44,6 +50,8 @@ function init() {
             taskInput();
         });
         $('body').on('click', 'a.task', function(e) {
+            $('.task').removeClass('selected');
+            $(e.target).addClass('selected');
             var taskName = $(e.target).attr('data-name');
             var taskToSet;
             if (taskName === '') {
@@ -51,12 +59,37 @@ function init() {
             } else {
                 taskToSet = getMatchingTasks(taskName).perfectMatch;
             }
-            setCurrentTask(taskToSet);
-            $('.task').removeClass('selected');
-            $(e.target).addClass('selected');
+            if (!entryEditMode) {
+                setCurrentTask(taskToSet);
+            } else {
+                setEditedEntryTask(taskToSet);
+            }
+        });
+        $('body').on('click', '.entry', function(e){
+            entryEditMode = true;           
+            $('.entry').removeClass('selected');
+            var td = $(e.target).closest('td');
+            td.addClass('selected');
+            editedEntry.date = td.attr('data-date');
+            editedEntry.index = +(td.attr('data-index'));
+            editedEntry.taskName = td.attr('data-task');
+            taskInput();
+        });
+        $('body').on('click', '.empty-cell', function(e){
+            finishEditing();
         });
         setTimerValue(settings.workLength);
     });
+}
+
+function finishEditing() {
+    entryEditMode = false;
+    editedEntry.date = null;
+    editedEntry.index = null;
+    editedEntry.taskName = null;
+    $('.entry').removeClass('selected');
+    taskInput();
+    refreshCalendar();
 }
 
 function loadSettings() {
@@ -278,9 +311,11 @@ function renderCalendar(weekStart) {
     for (var i = 0; i < grid.length; i++) {
         grid[i] = new Array(7);
     }
+    var dates = new Array(7);
     for (var d = 0; d < 7; d++) {
         var day = moment(weekStart).add(d, 'days').toDate();
         var dateStr = day.getFullYear() + '-' + (day.getMonth() + 1) + '-' + day.getDate();
+        dates[d] = dateStr;
         if (dateStr === currentDay) {
             currentDayIndex = d;
         }
@@ -347,6 +382,15 @@ function renderCalendar(weekStart) {
                 calendarCell.attr('title', entry["task"].description);
                 calendarCell.html(entry["time"]);
                 calendarCell.append($('<span class="ml-2">' + entry["task"].name + '</span>'));
+                calendarCell.addClass('entry');
+                calendarCell.attr('data-date', dates[d]);
+                calendarCell.attr('data-index', row - 2);
+                calendarCell.attr('data-task', entry["task"].name);
+            } else {
+                calendarCell.addClass('empty-cell');
+            }
+            if (entryEditMode && dates[d] === editedEntry.date && row - 2 === editedEntry.index) {
+                calendarCell.addClass('selected');
             }
             calendarRow.append(calendarCell);
         }
@@ -378,7 +422,16 @@ function taskInput() {
         }
         $('#matching-tasks').append($('<a class="task btn" data-name="' + matchingTasks.matches[i].name + '" title="' + matchingTasks.matches[i].description + '" style="background-color: ' + matchingTasks.matches[i].color + '">' + taskText + '</a>'));
     }
-    $("a.task[data-name='" + currentTask.name + "']").addClass('selected');
+    if (!entryEditMode) {
+        $("a.task[data-name='" + currentTask.name + "']").addClass('selected');
+        $('#matching-tasks').removeClass('edit-mode');
+    } else {
+        $("a.task[data-name='" + editedEntry.taskName + "']").addClass('selected');
+        $("a.task[data-name='" + currentTask.name + "']").addClass('shadow-selected');
+        var entryData = calendar[editedEntry.date].entries[editedEntry.index];
+        $('#matching-tasks').prepend($('<div class="card"><div class="card-body">Editing entry ' + editedEntry.date + ' ' + entryData.time + ' ' + entryData.task.name + '<a href="#" class="btn btn-primary ml-3" onclick="finishEditing();">Finish</a></div></div>'));
+        $('#matching-tasks').addClass('edit-mode');
+    }
 }
 
 function createTaskDescriptionInput() {
@@ -418,6 +471,14 @@ function createTask(name, description) {
 
 function setCurrentTask(task) {
     currentTask = task;
+}
+
+function setEditedEntryTask(task) {
+    editedEntry.taskName = task.name;
+    calendar[editedEntry.date].entries[editedEntry.index].task = task;
+    refreshCalendar();
+    saveCalendar();
+    taskInput();
 }
 
 function saveTasks() {
