@@ -1,5 +1,6 @@
 <html>
     <head>
+        <meta charset="UTF-8">
         <script src="main.js"></script>
         <link rel="stylesheet" type="text/css" href="main.css">
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
@@ -14,6 +15,49 @@
     </head>
     <body onload="init()">
         <div class="container">
+            <div class="row">
+                <div class="col">
+                    <a href="#" onclick="settingsClicked();" id="toggleSettings" class="pull-right text-muted" data-toggle="collapse" data-target="#settings"><i class="fa fa-gear" aria-hidden="true"></i> Settings</a>
+                    <div id="settings" class="collapse pull-right mt-2">
+                        <div class="form-row">
+                            <div class="form-group mr-2">
+                                <label for="workLength">Work length (minutes)</label>
+                                <input type="text" class="form-control form-control-sm" id="workLength">
+                            </div>
+                            <div class="form-group mr-2">
+                                <label for="shortBreakLength">Short break length (minutes)</label>
+                                <input type="text" class="form-control form-control-sm" id="shortBreakLength">
+                            </div>
+                            <div class="form-group mr-2">
+                                <label for="longBreakLength">Long break length (minutes)</label>
+                                <input type="text" class="form-control form-control-sm" id="longBreakLength">
+                            </div>
+                            <div class="form-group mr-2">
+                                <label for="workDayLength">Work day length (minutes)</label>
+                                <input type="text" class="form-control form-control-sm" id="workDayLength">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-check mr-2">
+                                <label class="form-check-label">
+                                  <input id="includeShortBreak" type="checkbox" class="form-check-input">
+                                  Include short break in time periods
+                                </label>
+                            </div>
+                            <div class="form-check mr-2">
+                                <label class="form-check-label">
+                                  <input id="includeLongBreak" type="checkbox" class="form-check-input">
+                                  Include long break in time periods
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group pull-right">
+                            <button class="btn btn-primary" onclick="saveSettings();">Save</button>
+                            <button class="btn" onclick="resetSettings();">Reset</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         <div class="row justify-content-md-center">
                 <div class="col col-md-auto">
                     <div class="btn-group mt-2">
@@ -40,8 +84,7 @@
                     <div class="col col-md-auto">
                         <div class="btn-group">
                             <button class="btn" onclick="togglePause();">
-                                <i class="fa fa-play" aria-hidden="true"></i>
-                                <i class="fa fa-pause" aria-hidden="true"></i>                           
+                                <i id="playPauseIcon" class="fa fa-play" aria-hidden="true"></i>                                                          
                             </button>
                             <button class="btn" onclick="fastForward();">
                                 <i class="fa fa-fast-forward" aria-hidden="true"></i>                                

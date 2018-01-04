@@ -1,10 +1,24 @@
 "use strict"
-var workLength = 1500;
-var shortBreakLength = 300;
-var longBreakLength = 600;
+
+var defaultSettings = {
+    workLength : 1500,
+    shortBreakLength : 300,
+    longBreakLength : 600,
+    workDayLength : 28800,
+    includeShortBreakInChunks: true,
+    includeLongBreakInChunks: false
+};
+var settings = getClonedDefaultSettings();
 var timerInterval;
 var timerCallback = null;
-var paused = false;
+var paused = true;
+var timerRunning = false;
+var entryEditMode = false;
+var editedEntry = {
+    date: null,
+    index: null,
+    taskName: null
+};
 var notificationPermission;
 var tasks;
 var emptyTask = {name : '', description: 'No task', color: '#FFFFFF'};
@@ -23,11 +37,12 @@ weekday[6] = "Saturday";
 var audio = new Audio('sound.mp3');
 
 function init() {
+    loadSettings();
     getPermission();
     initTasks();
     taskInput();
     initCalendar();
-    refreshCalendar();
+    refreshCalendar();   
     $(document).ready(function(){
         $('body').on('click', 'a.create-new', function(e) {
             setCurrentTask(createTask($(e.target).attr('data-name'), $('#new-task-description').val()));
@@ -35,6 +50,8 @@ function init() {
             taskInput();
         });
         $('body').on('click', 'a.task', function(e) {
+            $('.task').removeClass('selected');
+            $(e.target).addClass('selected');
             var taskName = $(e.target).attr('data-name');
             var taskToSet;
             if (taskName === '') {
@@ -42,11 +59,110 @@ function init() {
             } else {
                 taskToSet = getMatchingTasks(taskName).perfectMatch;
             }
-            setCurrentTask(taskToSet);
-            $('.task').removeClass('selected');
-            $(e.target).addClass('selected');
+            if (!entryEditMode) {
+                setCurrentTask(taskToSet);
+            } else {
+                setEditedEntryTask(taskToSet);
+            }
         });
+        $('body').on('click', '.entry', function(e){
+            entryEditMode = true;           
+            $('.entry').removeClass('selected');
+            var td = $(e.target).closest('td');
+            td.addClass('selected');
+            editedEntry.date = td.attr('data-date');
+            editedEntry.index = +(td.attr('data-index'));
+            editedEntry.taskName = td.attr('data-task');
+            taskInput();
+        });
+        $('body').on('click', '.empty-cell', function(e){
+            finishEditing();
+        });
+        setTimerValue(settings.workLength);
     });
+}
+
+function finishEditing() {
+    entryEditMode = false;
+    editedEntry.date = null;
+    editedEntry.index = null;
+    editedEntry.taskName = null;
+    $('.entry').removeClass('selected');
+    taskInput();
+    refreshCalendar();
+}
+
+function deleteEntry() {
+    if (editedEntry.index !== calendar[editedEntry.date].entries.length - 1) {
+        return;
+    }
+    calendar[editedEntry.date].entries.splice(editedEntry.index, 1);
+    saveCalendar();
+    finishEditing();
+}
+
+function loadSettings() {
+    var savedSettings = localStorage.getItem("settings");
+    if (savedSettings) {
+        settings = JSON.parse(savedSettings);
+    }
+    setSettingsInputs();
+}
+
+function saveSettings() {
+    var newSettings = getClonedDefaultSettings();
+    var workLengthInput = +$('#workLength').val();
+    if (Number.isInteger(workLengthInput)) {
+        newSettings.workLength = workLengthInput * 60;
+    }
+    var shortBreakLengthInput = +$('#shortBreakLength').val();
+    if (Number.isInteger(shortBreakLengthInput)) {
+        newSettings.shortBreakLength = shortBreakLengthInput * 60;
+    }
+    var longBreakLengthInput = +$('#longBreakLength').val();
+    if (Number.isInteger(longBreakLengthInput)) {
+        newSettings.longBreakLength = longBreakLengthInput * 60;
+    }
+    var workDayLengthInput = +$('#workDayLength').val();
+    if (Number.isInteger(workDayLengthInput)) {
+        newSettings.workDayLength = workDayLengthInput * 60;
+    }
+    newSettings.includeShortBreakInChunks = $('#includeShortBreak').is(':checked');
+    newSettings.includeLongBreakInChunks = $('#includeLongBreak').is(':checked');
+    settings = newSettings;
+    localStorage.setItem("settings", JSON.stringify(settings));
+    if (timerRunning) {
+        clearInterval(timerInterval);
+        timerRunning = false;
+        paused = true;
+        setPlayPauseIcon();
+    }
+    refreshCalendar();
+    setTimerValue(settings.workLength);
+    $('#toggleSettings').click();
+}
+
+function settingsClicked() {
+    setSettingsInputs();
+}
+
+function resetSettings() {
+    settings = getClonedDefaultSettings();
+    setSettingsInputs();
+    saveSettings();
+}
+
+function setSettingsInputs() {
+    $('#workLength').val(settings.workLength / 60);
+    $('#shortBreakLength').val(settings.shortBreakLength / 60);
+    $('#longBreakLength').val(settings.longBreakLength / 60);
+    $('#workDayLength').val(settings.workDayLength / 60);
+    $('#includeShortBreak').prop('checked', settings.includeShortBreakInChunks);
+    $('#includeLongBreak').prop('checked', settings.includeLongBreakInChunks);
+}
+
+function getClonedDefaultSettings() {
+    return JSON.parse(JSON.stringify(defaultSettings));
 }
 
 function initCalendar() {
@@ -103,12 +219,26 @@ function fastForward() {
 }
 
 function togglePause(){
-    if (!timerInterval) startWork();
+    if (!timerRunning) startWork();
     else paused = !paused;
+    setPlayPauseIcon(paused);
+}
+
+function setPlayPauseIcon() {
+    if (paused) {
+        $('#playPauseIcon').removeClass('fa-pause');
+        $('#playPauseIcon').addClass('fa-play');
+    } else {
+        $('#playPauseIcon').removeClass('fa-play');
+        $('#playPauseIcon').addClass('fa-pause');
+    }
 }
 
 function timerEnd() {
     clearInterval(timerInterval);
+    timerRunning = false;
+    paused = true;
+    setPlayPauseIcon();
     if (notificationPermission) {
         new Notification('Time\'s up!');
         audio.play();
@@ -119,23 +249,25 @@ function timerEnd() {
 }
 
 function startWork() {
-    startTimer(workLength, cbWork);
+    startTimer(settings.workLength, cbWork);
 }
 
 function startShortBreak() {
-    startTimer(shortBreakLength);
+    startTimer(settings.shortBreakLength);
 }
 
 function startLongBreak() {
-    startTimer(longBreakLength);
+    startTimer(settings.longBreakLength);
 }
 
 function startTimer(seconds, callback) {
-    paused = false;
     clearInterval(timerInterval);
     setTimerValue(seconds);
     timerInterval = setInterval(function(){tick();}, 1000);
+    timerRunning = true;
     timerCallback = callback;
+    paused = true;
+    togglePause();
 }
 
 function cbWork() {
@@ -154,7 +286,7 @@ function cbWork() {
 }
 
 function getStartOfWeek(date) {
-    return moment(date).startOf('week').toDate();
+    return moment(date).startOf('isoweek').toDate();
 }
 
 function calendarLeft() {
@@ -179,20 +311,20 @@ function refreshCalendar() {
 
 function renderCalendar(weekStart) {
     $('#calendar').html('');
-    var leftColumn = [];
-    for (var s = (workLength + shortBreakLength); s <= 28800; s += (workLength + shortBreakLength)) {
-        var hours = Math.floor(s / 3600);
-        var minutes = (s % 3600) / 60;
-        leftColumn.push(formatTime(hours, minutes));
-    }
     var currentDayIndex;
-    var grid = new Array(leftColumn.length + 2); // day names and dates
+    var normalChunkLength = settings.workLength;
+    if (settings.includeShortBreakInChunks) {
+        normalChunkLength += settings.shortBreakLength;
+    }
+    var grid = new Array(2 + Math.ceil(settings.workDayLength / normalChunkLength)); // 2 for day names and dates
     for (var i = 0; i < grid.length; i++) {
         grid[i] = new Array(7);
     }
+    var dates = new Array(7);
     for (var d = 0; d < 7; d++) {
         var day = moment(weekStart).add(d, 'days').toDate();
         var dateStr = day.getFullYear() + '-' + (day.getMonth() + 1) + '-' + day.getDate();
+        dates[d] = dateStr;
         if (dateStr === currentDay) {
             currentDayIndex = d;
         }
@@ -206,6 +338,24 @@ function renderCalendar(weekStart) {
                 var entry = calendar[dateStr].entries[i];
                 grid[i + 2][d] = entry;
             }
+        }
+    }
+    var leftColumn = [];
+    var workdayEndsAtIndex = -1;
+    var longBreakCounter = 0;
+    for (var s = normalChunkLength; s <= Math.max(settings.workDayLength, normalChunkLength * grid.length - 2); s += normalChunkLength) {
+        if (settings.includeLongBreakInChunks) {
+            longBreakCounter++;
+            if (longBreakCounter === 4) {
+                longBreakCounter = 0;
+                s += settings.longBreakLength - settings.shortBreakLength;
+            }
+        }
+        var hours = Math.floor(s / 3600);
+        var minutes = (s % 3600) / 60;
+        leftColumn.push(formatTime(hours, minutes));
+        if (s <= settings.workDayLength) {
+            workdayEndsAtIndex++;
         }
     }
     var calendarTable = $('<table class="table table-sm"></table>');
@@ -225,7 +375,11 @@ function renderCalendar(weekStart) {
     var calendarBody = $('<tbody></tbody>');
     for (var row = 2; row < grid.length; row++) {
         var calendarRow = $('<tr></tr>');
-        calendarRow.append($('<td>' + leftColumn[row - 2] + '</td>'));
+        var leftCell = $('<td>' + leftColumn[row - 2] + '</td>');
+        if (row - 2 > workdayEndsAtIndex) {
+            leftCell.addClass('text-muted');
+        }
+        calendarRow.append(leftCell);
         for (var d = 0; d < 7; d++) {
             var entry = grid[row][d];
             var calendarCell = $('<td></td>');
@@ -237,6 +391,15 @@ function renderCalendar(weekStart) {
                 calendarCell.attr('title', entry["task"].description);
                 calendarCell.html(entry["time"]);
                 calendarCell.append($('<span class="ml-2">' + entry["task"].name + '</span>'));
+                calendarCell.addClass('entry');
+                calendarCell.attr('data-date', dates[d]);
+                calendarCell.attr('data-index', row - 2);
+                calendarCell.attr('data-task', entry["task"].name);
+            } else {
+                calendarCell.addClass('empty-cell');
+            }
+            if (entryEditMode && dates[d] === editedEntry.date && row - 2 === editedEntry.index) {
+                calendarCell.addClass('selected');
             }
             calendarRow.append(calendarCell);
         }
@@ -268,7 +431,19 @@ function taskInput() {
         }
         $('#matching-tasks').append($('<a class="task btn" data-name="' + matchingTasks.matches[i].name + '" title="' + matchingTasks.matches[i].description + '" style="background-color: ' + matchingTasks.matches[i].color + '">' + taskText + '</a>'));
     }
-    $("a.task[data-name='" + currentTask.name + "']").addClass('selected');
+    if (!entryEditMode) {
+        $("a.task[data-name='" + currentTask.name + "']").addClass('selected');
+        $('#matching-tasks').removeClass('edit-mode');
+    } else {
+        $("a.task[data-name='" + editedEntry.taskName + "']").addClass('selected');
+        $("a.task[data-name='" + currentTask.name + "']").addClass('shadow-selected');
+        var entryData = calendar[editedEntry.date].entries[editedEntry.index];
+        $('#matching-tasks').prepend($('<div class="card"><div class="card-body">Editing entry ' + editedEntry.date + ' ' + entryData.time + ' ' + entryData.task.name + '<a href="#" class="btn btn-primary ml-3" onclick="finishEditing();">Finish</a><a href="#" id="deleteEntry" class="btn btn-danger ml-3" onclick="deleteEntry();">Delete</a></div></div>'));
+        if (editedEntry.index !== calendar[editedEntry.date].entries.length - 1) {
+            $('#deleteEntry').addClass('disabled');
+        }
+        $('#matching-tasks').addClass('edit-mode');
+    }
 }
 
 function createTaskDescriptionInput() {
@@ -310,6 +485,14 @@ function setCurrentTask(task) {
     currentTask = task;
 }
 
+function setEditedEntryTask(task) {
+    editedEntry.taskName = task.name;
+    calendar[editedEntry.date].entries[editedEntry.index].task = task;
+    refreshCalendar();
+    saveCalendar();
+    taskInput();
+}
+
 function saveTasks() {
     localStorage.setItem("tasks", JSON.stringify(tasks));
 }
@@ -320,7 +503,6 @@ function saveCalendar() {
 
 function getRandomColor() {
     var golden = 0.618033988749895;
-    var letters = '0123456789ABCDEF';
     var h = Math.random();
     h += golden;
     h %= 1;
