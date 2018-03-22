@@ -166,7 +166,7 @@ function getClonedDefaultSettings() {
 }
 
 function initCalendar() {
-    currentDay = new Date().getFullYear() + '-' + (new Date().getMonth() + 1) + '-' + (new Date().getDate());    
+    setCurrentDate();
     var savedCalendar = localStorage.getItem("calendar");
     if (savedCalendar) {
         calendar = JSON.parse(savedCalendar);
@@ -248,6 +248,10 @@ function timerEnd() {
     }
 }
 
+function setCurrentDate() {
+    currentDay = new Date().getFullYear() + '-' + (new Date().getMonth() + 1) + '-' + (new Date().getDate());
+}
+
 function startWork() {
     startTimer(settings.workLength, cbWork);
 }
@@ -276,6 +280,7 @@ function cbWork() {
     }
     var hour = new Date().getHours();
     var minute = new Date().getMinutes();
+    setCurrentDate();
     if (!calendar[currentDay]) {
         calendar[currentDay] = {entries: []};
     }
