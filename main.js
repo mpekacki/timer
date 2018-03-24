@@ -99,9 +99,6 @@ function finishEditing() {
 }
 
 function deleteEntry() {
-    if (editedEntry.index !== calendar[editedEntry.date].entries.length - 1) {
-        return;
-    }
     calendar[editedEntry.date].entries.splice(editedEntry.index, 1);
     saveCalendar();
     finishEditing();
@@ -462,9 +459,6 @@ function taskInput() {
         $("a.task[data-name='" + currentTask.name + "']").addClass('shadow-selected');
         var entryData = calendar[editedEntry.date].entries[editedEntry.index];
         $('#matching-tasks').prepend($('<div class="card"><div class="card-body">Editing entry ' + editedEntry.date + ' ' + entryData.time + ' ' + entryData.task.name + '<a href="#" class="btn btn-primary ml-3" onclick="finishEditing();">Finish</a><a href="#" id="deleteEntry" class="btn btn-danger ml-3" onclick="deleteEntry();">Delete</a></div></div>'));
-        if (editedEntry.index !== calendar[editedEntry.date].entries.length - 1) {
-            $('#deleteEntry').addClass('disabled');
-        }
         $('#matching-tasks').addClass('edit-mode');
     }
 }
