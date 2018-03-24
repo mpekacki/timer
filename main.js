@@ -19,6 +19,8 @@ var editedEntry = {
     index: null,
     taskName: null
 };
+var limitNumberOfTasks = true;
+var numberOfTasksToShow = 15;
 var notificationPermission;
 var tasks;
 var emptyTask = {name : '', description: 'No task', color: '#FFFFFF'};
@@ -77,6 +79,10 @@ function init() {
         });
         $('body').on('click', '.empty-cell', function(e){
             finishEditing();
+        });
+        $('body').on('click', '.showMore', function(e){
+            limitNumberOfTasks = !limitNumberOfTasks;
+            taskInput();
         });
         setTimerValue(settings.workLength);
     });
@@ -429,12 +435,21 @@ function taskInput() {
         $('#matching-tasks').append($('<a class="task btn" data-name="' + matchingTasks.perfectMatch.name + '" title="' + matchingTasks.perfectMatch.description + '" style="background-color: ' + matchingTasks.perfectMatch.color + '">' + matchingTasks.perfectMatch.name + '</a>'));
         destroyTaskDescriptionInput();
     }
-    for (var i = 0; i < matchingTasks.matches.length; i++) {
+    let visibleTasksNumber = limitNumberOfTasks ? numberOfTasksToShow : matchingTasks.matches.length;
+    let remainingTasksNumber = matchingTasks.matches.length - numberOfTasksToShow;
+    for (var i = 0; i < visibleTasksNumber; i++) {
         var taskText = matchingTasks.matches[i].name;
         if (taskText === '') {
             taskText = 'No task';
         }
         $('#matching-tasks').append($('<a class="task btn" data-name="' + matchingTasks.matches[i].name + '" title="' + matchingTasks.matches[i].description + '" style="background-color: ' + matchingTasks.matches[i].color + '">' + taskText + '</a>'));
+    }
+    if (remainingTasksNumber > 0) {
+        if (limitNumberOfTasks) {
+            $('#matching-tasks').append($('<a class="btn showMore">' + remainingTasksNumber + ' more</a>'));
+        } else {
+            $('#matching-tasks').append($('<a class="btn showMore">show less</a>'));
+        }
     }
     if (!entryEditMode) {
         $("a.task[data-name='" + currentTask.name + "']").addClass('selected');
@@ -476,17 +491,30 @@ function getMatchingTasks(text) {
             result.matches.push(task);
         }
     }
+    result.matches.sort(function(a,b){
+        if (!a.lastUsed) {
+            return -1;
+        } else if (!b.lastUsed) {
+            return 1;
+        } else {
+            return b.lastUsed - a.lastUsed;
+        }
+    });
     return result;
 }
 
 function createTask(name, description) {
-    var newTask = {name: name, description: description, color: getRandomColor()};
+    var newTask = {name: name, description: description, color: getRandomColor(), lastUsed: Date.now()};
     tasks.push(newTask);
     saveTasks();
     return newTask;
 }
 
 function setCurrentTask(task) {
+    if (task.name){
+        task.lastUsed = Date.now();
+        saveTasks();
+    }
     currentTask = task;
 }
 
