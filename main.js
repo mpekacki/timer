@@ -435,7 +435,10 @@ function taskInput() {
         $('#matching-tasks').append($('<a class="task btn" data-name="' + matchingTasks.perfectMatch.name + '" title="' + matchingTasks.perfectMatch.description + '" style="background-color: ' + matchingTasks.perfectMatch.color + '">' + matchingTasks.perfectMatch.name + '</a>'));
         destroyTaskDescriptionInput();
     }
-    let visibleTasksNumber = limitNumberOfTasks ? numberOfTasksToShow : matchingTasks.matches.length;
+    let visibleTasksNumber = matchingTasks.matches.length;
+    if (limitNumberOfTasks && matchingTasks.matches.length > numberOfTasksToShow) {
+        visibleTasksNumber = numberOfTasksToShow;
+    }
     let remainingTasksNumber = matchingTasks.matches.length - numberOfTasksToShow;
     for (var i = 0; i < visibleTasksNumber; i++) {
         var taskText = matchingTasks.matches[i].name;
