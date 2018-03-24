@@ -538,10 +538,7 @@ function saveCalendar() {
 }
 
 function getRandomColor() {
-    var golden = 0.618033988749895;
     var h = Math.random();
-    h += golden;
-    h %= 1;
     var rgb = HSVtoRGB(h, 0.5, 0.95);
     var r = rgb.r.toString(16);
     if (r.length == 1) r = '0' + r;
