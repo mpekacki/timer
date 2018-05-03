@@ -24,6 +24,7 @@ var numberOfTasksToShow = 15;
 var notificationPermission;
 var tasks;
 var emptyTask = {name : '', description: 'No task', color: '#FFFFFF'};
+var newTaskColor = getRandomColor();
 var currentTask = emptyTask;
 var calendar;
 var currentDay;
@@ -423,7 +424,7 @@ function taskInput() {
     var matchingTasks = getMatchingTasks(text);
     if (matchingTasks.perfectMatch === null) {
         if (text.length) {
-            $('#matching-tasks').append($('<a class="create-new btn" data-name="' + text + '">Create new task "' + text + '"</a>'));
+            $('#matching-tasks').append($('<a class="create-new btn" data-name="' + text + '" style="background-color: ' + newTaskColor + '">Create new task "' + text + '"<span class="fa fa-refresh" onclick="newTaskColor = getRandomColor();taskInput(); return false;"></span></a>'));
             createTaskDescriptionInput();
         } else {
             destroyTaskDescriptionInput();
@@ -501,9 +502,10 @@ function getMatchingTasks(text) {
 }
 
 function createTask(name, description) {
-    var newTask = {name: name, description: description, color: getRandomColor(), lastUsed: Date.now()};
+    var newTask = {name: name, description: description, color: newTaskColor, lastUsed: Date.now()};
     tasks.push(newTask);
     saveTasks();
+    newTaskColor = getRandomColor();
     return newTask;
 }
 
